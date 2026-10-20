@@ -1,0 +1,63 @@
+# Family Claude bot.
+#
+#   First run:  cp .env.example .env   # fill it in
+#               docker compose up -d
+#   Update:     docker compose pull && docker compose up -d
+#               (or, building from source: git pull && docker compose up -d --build)
+#   Logs:       docker compose logs -f
+#
+# Secrets live in .env; everyday settings are below.
+
+services:
+  family-claude-bot:
+    image: ghcr.io/thetyster/telegram-claude-bot:latest
+    build: .
+    container_name: family-claude-bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # api_key (ANTHROPIC_API_KEY) or subscription (CLAUDE_CODE_OAUTH_TOKEN).
+      AUTH_MODE: ${AUTH_MODE:-api_key}
+      # "sonnet", "opus", "haiku", or a full model ID.
+      MODEL: ${MODEL:-sonnet}
+      DAILY_LIMIT: ${DAILY_LIMIT:-5}
+      # When the daily limit resets (midnight here).
+      TIMEZONE: ${TIMEZONE:-America/Chicago}
+      # API-key mode only: stop a single question after this much spend (0 = no cap).
+      MAX_COST_PER_CALL_USD: ${MAX_COST_PER_CALL_USD:-0.50}
+      MAX_TURNS: ${MAX_TURNS:-12}
+      CALL_TIMEOUT_SECONDS: ${CALL_TIMEOUT_SECONDS:-300}
+      MAX_CONCURRENT_CALLS: ${MAX_CONCURRENT_CALLS:-3}
+      # Forwarded messages wait this long (in memory only) for a question.
+      FORWARD_BUFFER_SECONDS: ${FORWARD_BUFFER_SECONDS:-120}
+      FORWARD_BUFFER_MAX_MESSAGES: ${FORWARD_BUFFER_MAX_MESSAGES:-20}
+      # polling needs no open ports. webhook is for running behind a proxy/Cloudflare.
+      TRANSPORT: ${TRANSPORT:-polling}
+      # Block the bot from reaching private/LAN addresses (needs NET_ADMIN below).
+      EGRESS_FIREWALL: ${EGRESS_FIREWALL:-1}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - bot-data:/data   # only daily usage counts, never messages
+    # Hardening: read-only image, nothing persistent except /data.
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,exec
+      - /run:size=1m
+    cap_drop: [ALL]
+    cap_add:
+      - NET_ADMIN   # set up the egress firewall at start-up
+      - SETUID      # then switch to the unprivileged "bot" user...
+      - SETGID      # ...which drops every capability
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 2g
+    cpus: 2
+    pids_limit: 512
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  bot-data:
