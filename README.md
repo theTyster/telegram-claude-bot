@@ -33,6 +33,27 @@ It sends that to Claude through the [Claude Agent SDK](https://code.claude.com/d
 
 ## Setup
 
+### Quick install
+
+You need Docker with the Compose plugin, plus git. Make an empty folder and run the setup script in it:
+
+```sh
+mkdir family-bot && cd family-bot
+curl -fsSL https://raw.githubusercontent.com/theTyster/telegram-claude-bot/main/setup.sh -o setup.sh
+bash setup.sh
+```
+
+The script:
+- downloads the bot into that folder
+- checks your bot token and warns you if privacy mode is still on
+- finds your user id and the family group's id for you: you send the bot a DM and post one message in the group
+- asks about the API key or subscription token, timezone, daily limit and model
+- writes `.env`, then starts the bot with Docker Compose
+
+To update later, run `./setup.sh` again. To change settings, run `./setup.sh --reconfigure`.
+
+The steps below are the same thing done by hand.
+
 ### 1. Create the bot
 
 1. In Telegram, talk to [@BotFather](https://t.me/BotFather) → `/newbot`, and copy the **token**.
